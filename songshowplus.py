@@ -45,6 +45,7 @@ SONG_NUMBER = 36
 CUSTOM_VERSE = 37
 
 log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
 
 
 class SongShowPlusImport(SongImport):
@@ -102,8 +103,13 @@ class SongShowPlusImport(SongImport):
 
             with file_path.open('rb') as song_file:
                 while True:
-                    block_key, = struct.unpack("I", song_file.read(4))
-                    log.debug('block_key: %d' % block_key)
+                    try:
+                        block_key, = struct.unpack("I", song_file.read(4))
+                        log.debug('block_key: %d' % block_key)
+                    except Exception:
+                        # If the read failed, assume we hit the end prematurely and try to finalize
+                        log.warning('File ended prematurely. Import may be incomplete.')
+                        break
                     # The file ends with 4 NULL's
                     if block_key == 0:
                         break

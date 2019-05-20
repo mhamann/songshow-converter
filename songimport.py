@@ -23,6 +23,9 @@
 import logging
 import re
 
+from utils import VerseType, normalize_str, Song
+from openlyricsxml import SongXML
+
 
 log = logging.getLogger(__name__)
 
@@ -61,6 +64,7 @@ class SongImport():
         log.debug(self.import_source)
         self.import_wizard = None
         self.song = None
+        self.store = kwargs['store']
         self.stop_import_flag = False
         self.set_defaults()
 
@@ -97,7 +101,7 @@ class SongImport():
         :param reason: The reason why the import failed. The string should be as informative as possible.
         """
         self.set_defaults()
-        log.error('Failed to import song')
+        log.error('Failed to import song: "{reason}"'.format(reason=reason))
 
     def stop_import(self):
         """
@@ -303,12 +307,10 @@ class SongImport():
         if not self.check_complete():
             self.set_defaults()
             return False
-        """
-        log.info('committing song {title} to database'.format(title=self.title))
+        
+        log.info('committing song {title} to store'.format(title=self.title))
         song = Song()
         song.title = self.title
-        if self.import_wizard is not None:
-            self.import_wizard.increment_progress_bar(WizardStrings.ImportingType.format(source=song.title))
         song.alternate_title = self.alternate_title
         # Values will be set when cleaning the song.
         song.search_title = ''
@@ -316,7 +318,7 @@ class SongImport():
         song.verse_order = ''
         song.song_number = self.song_number
         verses_changed_to_other = {}
-        #sxml = SongXML()
+        sxml = SongXML()
         other_count = 1
         for (verse_def, verse_text, lang) in self.verses:
             if verse_def[0].lower() in VerseType.tags:
@@ -328,8 +330,8 @@ class SongImport():
                 verse_tag = VerseType.tags[VerseType.Other]
                 log.info('Versetype {old} changing to {new}'.format(old=verse_def, new=new_verse_def))
                 verse_def = new_verse_def
-            #sxml.add_verse_to_lyrics(verse_tag, verse_def[1:], normalize_str(verse_text), lang)
-        #song.lyrics = str(sxml.extract_xml(), 'utf-8')
+            sxml.add_verse_to_lyrics(verse_tag, verse_def[1:], normalize_str(verse_text), lang)
+        song.lyrics = str(sxml.extract_xml(), 'utf-8')
         if not self.verse_order_list and self.verse_order_list_generated_useful:
             self.verse_order_list = self.verse_order_list_generated
         self.verse_order_list = [verses_changed_to_other.get(v, v) for v in self.verse_order_list]
@@ -338,38 +340,18 @@ class SongImport():
         song.comments = self.comments
         song.theme_name = self.theme_name
         song.ccli_number = self.ccli_number
-        for author_text, author_type in self.authors:
-            author = self.manager.get_object_filtered(Author, Author.display_name == author_text)
-            if not author:
-                author = Author.populate(display_name=author_text,
-                                         last_name=author_text.split(' ')[-1],
-                                         first_name=' '.join(author_text.split(' ')[:-1]))
-            song.add_author(author, author_type)
+        song.authors = self.authors
         if self.song_book_name:
-            song_book = self.manager.get_object_filtered(Book, Book.name == self.song_book_name)
-            if song_book is None:
-                song_book = Book.populate(name=self.song_book_name, publisher=self.song_book_pub)
-            song.add_songbook_entry(song_book, song.song_number)
+            song.song_book_name = self.song_book_name
+        song.topics = []
         for topic_text in self.topics:
             if not topic_text:
                 continue
-            topic = self.manager.get_object_filtered(Topic, Topic.name == topic_text)
-            if topic is None:
-                topic = Topic.populate(name=topic_text)
-            song.topics.append(topic)
+            song.topics.append(topic_text)
         # We need to save the song now, before adding the media files, so that
         # we know where to save the media files to.
-        clean_song(self.manager, song)
-        self.manager.save_object(song)
-        # Now loop through the media files, copy them to the correct location,
-        # and save the song again.
-        for file_path, weight in self.media_files:
-            media_file = self.manager.get_object_filtered(MediaFile, MediaFile.file_path == file_path)
-            if not media_file:
-                if file_path.parent:
-                    file_path = self.copy_media_file(song.id, file_path)
-                song.media_files.append(MediaFile.populate(file_path=file_path, weight=weight))
-        self.manager.save_object(song)
-        """
+        if isinstance(self.store, list):
+            self.store.append(song)
+
         self.set_defaults()
         return True
