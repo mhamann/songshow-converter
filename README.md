@@ -28,12 +28,12 @@ Please open an issue if you find a bug. I can't promise I'll have time to fix it
 
 ## Usage
 - Clone this repo to your local machine
-- Extract your SongShow Plus database into a folder somewhere
-    SongShow stores its files on disk somewhere - usually `C:\Users\Public\Public Documents\R-Technics\SongShow Plus\Songs`, so it's just a matter of copying them around to the right place. I recommend you work with a copy just in case.)
+- Extract your SongShow Plus database into a folder somewhere 
+    (SongShow stores its files on disk somewhere - usually `C:\Users\Public\Public Documents\R-Technics\SongShow Plus\Songs`, so it's just a matter of copying them around to the right place. I recommend you work with a copy just in case.)
 - Create a folder where you want the exported files to be stored
 - Edit the section in `song_converter.py` marked **BEGIN CONFIGURATION** as follows:
-  - Set `IMPORT_DIR` to the location where your SongShow files are stored.
-  - Set `EXPORT_DIR` to the location where the converted files should be created.
+  - Set `IMPORT_DIR` to the path where your SongShow files are stored.
+  - Set `EXPORT_DIR` to the path where the converted files should be created.
   - Set `OUTPUT_MODE` to either `text` or `xml` depending on which format you need.
 
 - Now, just run the script from a terminal like this:
@@ -41,8 +41,21 @@ Please open an issue if you find a bug. I can't promise I'll have time to fix it
     python ./song_converter.py
     ```
 
+    You should see some output that looks similar to this:
+    ```
+    Now importing: ../Songs/via dolorosa.sbsong
+    Now importing: ../Songs/we wish you a merry christmas.sbsong
+    Now importing: ../Songs/what a friend we have in jesus & give me jesus.sbsong
+    Now importing: ../Songs/what do we want for our children.sbsong
+
+    Now exporting song: Via Dolorosa
+    Now exporting song: We Wish You a Merry Christmas
+    Now exporting song: What a Friend We Have in Jesus & Give Me Jesus
+    Now exporting song: What do we want for our children (Bette Sloat_Ruth Anderson)
+    ```
+
 That's it!
 
-Depending on the size of your song database and the speed of your computer, it may take a few minutes to complete the process. When done, you should have a much more useful database of songs that you can use in other church media sofware.
+Depending on the size of your song database and the speed of your computer, it may take a few minutes to complete the process. When done, you should have a much more useful database of songs that you can easily import into other church media sofware. (By the way, [Faithlife's Proclaim](https://proclaim.faithlife.com/) is pretty awesome, so check it out if you haven't already!)
 
 Hope this is useful to someone who had the same issue that I did.
