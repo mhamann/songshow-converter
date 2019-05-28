@@ -12,6 +12,18 @@ from pathlib import Path
 from lxml import etree
 from openlyricsxml import SongXML
 
+'''
+BEGIN CONFIGURATION
+'''
+
+IMPORT_DIR = '../Songs'
+EXPORT_DIR = '../songs_exported'
+OUTPUT_MODE = 'text'    # Can be `text` or `xml`
+
+'''
+END CONFIGURATION
+'''
+
 logger = logging.getLogger('root')
 logger.setLevel(logging.DEBUG)
 
@@ -27,8 +39,8 @@ def clean_filename(filename):
     """
     return INVALID_FILE_CHARS.sub('_', CONTROL_CHARS.sub('', filename)).strip()
 
-export_dir = Path('../songs_exported')
-search_dir = Path('../Songs')
+search_dir = Path(IMPORT_DIR)
+export_dir = Path(EXPORT_DIR)
 file_list = os.listdir(search_dir)
 file_list.sort()
 
@@ -203,5 +215,7 @@ def export_songs_xml(song_list):
 
         #pprint(xml)
 
-#export_songs_xml(song_store)
-export_songs_txt(song_store)
+if OUTPUT_MODE == 'xml':
+    export_songs_xml(song_store)
+else:
+    export_songs_txt(song_store)
