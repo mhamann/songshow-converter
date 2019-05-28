@@ -62,7 +62,7 @@ import re
 from lxml import etree, objectify
 
 from utils import VerseType
-
+from formattingtags import FormattingTags
 
 log = logging.getLogger(__name__)
 
@@ -296,7 +296,6 @@ class OpenLyrics(object):
             optional_verses = optional_verses.split('\n[---]\n')
             start_tags = ''
             end_tags = ''
-            """
             for index, optional_verse in enumerate(optional_verses):
                 # Fix up missing end and start tags such as {r} or {/r}.
                 optional_verse = start_tags + optional_verse
@@ -307,9 +306,66 @@ class OpenLyrics(object):
                 # Do not add the break attribute to the last lines element.
                 if index < len(optional_verses) - 1:
                     lines_element.set('break', 'optional')
-                    """
         xml_text = self._extract_xml(song_xml).decode()
         return self._chordpro_to_openlyrics(xml_text)
+
+    def _get_missing_tags(self, text):
+        """
+        Tests the given text for not closed formatting tags and returns a tuple consisting of two unicode strings::
+
+            ('{st}{r}', '{/r}{/st}')
+
+        The first unicode string are the start tags (for the next slide). The second unicode string are the end tags.
+
+        :param text: The text to test. The text must **not** contain html tags, only OpenLP formatting tags
+        are allowed::
+
+                {st}{r}Text text text
+        """
+        tags = []
+        for tag in FormattingTags.get_html_tags():
+            if tag['start tag'] == '{br}':
+                continue
+            if text.count(tag['start tag']) != text.count(tag['end tag']):
+                tags.append((text.find(tag['start tag']), tag['start tag'], tag['end tag']))
+        # Sort the lists, so that the tags which were opened first on the first slide (the text we are checking) will
+        # be opened first on the next slide as well.
+        tags.sort(key=lambda tag: tag[0])
+        end_tags = []
+        start_tags = []
+        for tag in tags:
+            start_tags.append(tag[1])
+            end_tags.append(tag[2])
+        end_tags.reverse()
+        return ''.join(start_tags), ''.join(end_tags)
+
+    def _add_text_with_tags_to_lines(self, verse_element, text, tags_element):
+        """
+        Convert text with formatting tags from OpenLP format to OpenLyrics format and append it to element ``<lines>``.
+        """
+        start_tags = OpenLyrics.START_TAGS_REGEX.findall(text)
+        end_tags = OpenLyrics.END_TAGS_REGEX.findall(text)
+        # Replace start tags with xml syntax.
+        for tag in start_tags:
+            # Tags already converted to xml structure.
+            xml_tags = tags_element.xpath('tag/attribute::name')
+            # Some formatting tag has only starting part e.g. <br>. Handle this case.
+            if tag in end_tags:
+                text = text.replace('{{{tag}}}'.format(tag=tag), '<tag name="{tag}">'.format(tag=tag))
+            else:
+                text = text.replace('{{{tag}}}'.format(tag=tag), '<tag name="{tag}"/>'.format(tag=tag))
+            # Add tag to <format> element if tag not present.
+            if tag not in xml_tags:
+                self._add_tag_to_formatting(tag, tags_element)
+        # Replace end tags.
+        for tag in end_tags:
+            text = text.replace('{{/{tag}}}'.format(tag=tag), '</tag>')
+        # Replace \n with <br/>.
+        text = text.replace('\n', '<br/>')
+        text = text.replace('[--}{--]', NEWPAGETAG)
+        element = etree.XML('<lines>{text}</lines>'.format(text=text))
+        verse_element.append(element)
+        return element
 
     def _chordpro_to_openlyrics(self, text):
         """

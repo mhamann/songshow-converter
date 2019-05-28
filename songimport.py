@@ -220,18 +220,15 @@ class SongImport():
                 if author2.endswith('.'):
                     author2 = author2[:-1]
                 if author2:
-                    if type:
-                        self.add_author(author2, type)
-                    else:
-                        self.add_author(author2)
+                    self.add_author(author2)
 
     def add_author(self, author, type=None):
         """
         Add an author to the list
         """
-        if (author, type) in self.authors:
+        if author in self.authors:
             return
-        self.authors.append((author, type))
+        self.authors.append(author)
 
     def add_media_file(self, file_path, weight=0):
         """
